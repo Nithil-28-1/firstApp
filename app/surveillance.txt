@@ -1,0 +1,139 @@
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  Animated,
+  Dimensions,
+  PanResponder,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import { realtimeDb, ref, set } from '../firebase';
+
+const { width, height } = Dimensions.get('window');
+const dpadRadius = 130;
+
+export default function SurveillanceWithJoystick() {
+  const [joystickData, setJoystickData] = useState({ dx: 0, dy: 0, directionLabel: 'center', directionCode: 0 });
+  const pan = useRef(new Animated.ValueXY()).current;
+
+  const getDirection = (dx: number, dy: number): { label: string; code: number } => {
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    if (angle >= 67.5 && angle < 112.5) return { label: 'up', code: 1 };
+    if (angle >= 22.5 && angle < 67.5) return { label: 'up-right', code: 2 };
+    if (angle >= -22.5 && angle < 22.5) return { label: 'right', code: 3 };
+    if (angle >= -67.5 && angle < -22.5) return { label: 'down-right', code: 4 };
+    if (angle >= -112.5 && angle < -67.5) return { label: 'down', code: 5 };
+    if (angle >= -157.5 && angle < -112.5) return { label: 'down-left', code: 6 };
+    if (angle >= 157.5 || angle < -157.5) return { label: 'left', code: 7 };
+    if (angle >= 112.5 && angle < 157.5) return { label: 'up-left', code: 8 };
+    return { label: 'center', code: 0 };
+  };
+
+  const sendJoystickData = async (dx: number, dy: number, directionCode: number) => {
+    try {
+      const joystickRef = ref(realtimeDb, 'joystick');
+      await set(joystickRef, { dx, dy, direction: directionCode });
+      console.log('Data sent to Firebase:', { dx, dy, direction: directionCode });
+    } catch (error) {
+      console.error('Error sending joystick data:', error);
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => pan.setOffset({ x: 0, y: 0 }),
+      onPanResponderMove: (_, gesture) => {
+        const distance = Math.min(dpadRadius, Math.sqrt(gesture.dx * 2 + gesture.dy * 2));
+        const angle = Math.atan2(gesture.dy, gesture.dx);
+        const dx = distance * Math.cos(angle);
+        const dy = distance * Math.sin(angle);
+        pan.setValue({ x: dx, y: dy });
+
+        const { label, code } = getDirection(dx, -dy);
+        const newData = {
+          dx: parseFloat(dx.toFixed(1)),
+          dy: -parseFloat(dy.toFixed(1)),
+          directionLabel: label,
+          directionCode: code,
+        };
+        setJoystickData(newData);
+        sendJoystickData(newData.dx, newData.dy, newData.directionCode);
+      },
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+        Animated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+        }).start();
+        setJoystickData({ dx: 0, dy: 0, directionLabel: 'center', directionCode: 0 });
+        sendJoystickData(0, 0, 0);
+      },
+    })
+  ).current;
+
+  return (
+    <View style={styles.container}>
+      {/* Stream on top */}
+      <View style={styles.streamWrapper}>
+        <WebView
+          source={{ uri: 'http://172.20.10.4:5000/embed' }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          originWhitelist={['*']}
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          style={styles.webview}
+        />
+      </View>
+
+      {/* Joystick below */}
+      <View style={styles.dpadContainer}>
+        <View style={styles.dpadBase}>
+          <Animated.View
+            style={[styles.joystick, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}
+            {...panResponder.panHandlers}
+          />
+        </View>
+
+        <Text style={styles.dataText}>dx: {joystickData.dx}</Text>
+        <Text style={styles.dataText}>dy: {joystickData.dy}</Text>
+        <Text style={styles.dataText}>Direction: {joystickData.directionLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  streamWrapper: { height: '25%', width: '100%' },
+  webview: { width: '100%', height: '100%' },
+  dpadContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dpadBase: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  joystick: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#555',
+    borderWidth: 3,
+    borderColor: '#999',
+  },
+  dataText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 5,
+  },
+});

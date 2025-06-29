@@ -1,0 +1,160 @@
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, BackHandler } from 'react-native';
+import { useRouter } from 'expo-router';
+
+export default function AboutUs() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const backAction = () => {
+      router.replace('/home'); // Use router.replace or router.push to go to home.tsx
+      return true; // Prevent default behavior (going back in stack)
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove(); // Clean up on unmount
+  }, []);
+  
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerText}>About Us</Text>
+      </View>
+
+      {/* Robot and Speech Bubble */}
+      <View style={styles.robotSection}>
+        <Image
+          source={require('../assets/images/robot_icon3.png')}
+          style={styles.robotIcon}
+        />
+        <View style={styles.speechBubble}>
+          <Text style={styles.speechText}>Want to{'\n'}know{'\n'}about me?</Text>
+          <View style={styles.speechBubbleArrowBorder} />
+          <View style={styles.speechBubbleArrow} />
+        </View>
+      </View>
+
+      {/* About Text Box */}
+      <View style={styles.textBox}>
+        <Text style={styles.textContent}>
+          We're a small group of students who are working on a project which aims to bring a sense of peace towards the users about their safety in the kitchen. Your support can make a big difference in the development of our project. Thank you for using our product.
+        </Text>
+      </View>
+
+      {/* Bottom Flipped Button */}
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Image
+          source={require('../assets/images/button2.png')}
+          style={styles.backIcon}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#46cbe2', // light blue background
+    alignItems: 'center',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#004aad',
+    paddingTop: 55,
+    paddingBottom: 30,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontFamily: 'BrickSans',
+    fontSize: 20,
+    color: '#fff',
+  },
+  robotSection: {
+    marginTop: 30,
+    marginLeft: 250,
+    position: 'relative',
+  },
+  robotIcon: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+  },
+  speechText: {
+    fontFamily: 'BrickSans',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  textBox: {
+    backgroundColor: '#004aad',
+    marginTop: 0, // closer to the robot
+    padding: 20,
+    borderRadius: 15,
+    width: '80%',
+  },
+  textContent: {
+    fontFamily: 'BrickSans',
+    fontSize: 14,
+    color: '#fff',
+    textAlign: 'center',
+  },
+  backButton: {
+    marginTop: 100,
+  },
+  backIcon: {
+    width: 60,
+    height: 60,
+    transform: [{ scaleX: -1 }], // flip horizontally
+    resizeMode: 'contain',
+  },
+  speechBubble: {
+    position: 'absolute',
+    top: -20,
+    left: 40,
+    backgroundColor: 'white',
+    borderColor: 'black',
+    borderWidth: 2,
+    borderRadius: 10,
+    padding: 10,
+    maxWidth: 120,
+    alignItems: 'center', // center arrow
+  },
+  speechBubbleArrow: {
+    position: 'absolute',
+    bottom: -12, // slightly lower to fit the border
+    left: '50%',
+    marginLeft: -8, // adjust based on width
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'white', // inside color (same as speech bubble)
+    borderStyle: 'solid',
+    zIndex: 2,
+  },
+  
+  speechBubbleArrowBorder: {
+    position: 'absolute',
+    bottom: -14, // slightly lower than the white arrow
+    left: '50%',
+    marginLeft: -9, // adjust based on width
+    width: 0,
+    height: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderTopWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'black', // black border color
+    borderStyle: 'solid',
+    zIndex: 3,
+  },  
+});

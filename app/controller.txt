@@ -1,0 +1,281 @@
+// app/controller.tsx
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  PanResponder,
+  Animated,
+  Dimensions,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
+import { realtimeDb, ref, set } from '../firebase';
+
+const { width, height } = Dimensions.get('window');
+const SPEED_ANGLES = [-120, -60, 0, 60, 120];
+
+export default function Controller() {
+  const [selectedSpeed, setSelectedSpeed] = useState<number | null>(null);
+  const [joystickData, setJoystickData] = useState({ dx: 0, dy: 0, directionLabel: 'center', directionCode: 0 });
+  const pan = useRef(new Animated.ValueXY()).current;
+  const screenAnim = useRef(new Animated.Value(0)).current;
+  const router = useRouter();
+  const dpadRadius = 130;
+
+  useEffect(() => {
+    Animated.timing(screenAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  const getDirection = (dx: number, dy: number): { label: string; code: number } => {
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    if (angle >= 67.5 && angle < 112.5) return { label: 'up', code: 1 };
+    if (angle >= 22.5 && angle < 67.5) return { label: 'up-right', code: 2 };
+    if (angle >= -22.5 && angle < 22.5) return { label: 'right', code: 3 };
+    if (angle >= -67.5 && angle < -22.5) return { label: 'down-right', code: 4 };
+    if (angle >= -112.5 && angle < -67.5) return { label: 'down', code: 5 };
+    if (angle >= -157.5 && angle < -112.5) return { label: 'down-left', code: 6 };
+    if (angle >= 157.5 || angle < -157.5) return { label: 'left', code: 7 };
+    if (angle >= 112.5 && angle < 157.5) return { label: 'up-left', code: 8 };
+    return { label: 'center', code: 0 };
+  };
+
+  const sendJoystickData = async (dx: number, dy: number, directionCode: number) => {
+    try {
+      const joystickRef = ref(realtimeDb, 'joystick');
+      await set(joystickRef, { dx, dy, direction: directionCode });
+      console.log('Data sent to Firebase:', { dx, dy, direction: directionCode });
+    } catch (error) {
+      console.error('Error sending joystick data:', error);
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => pan.setOffset({ x: 0, y: 0 }),
+      onPanResponderMove: (_, gesture) => {
+        const distance = Math.min(dpadRadius, Math.sqrt(gesture.dx ** 2 + gesture.dy ** 2));
+        const angle = Math.atan2(gesture.dy, gesture.dx);
+        const dx = distance * Math.cos(angle);
+        const dy = distance * Math.sin(angle);
+        pan.setValue({ x: dx, y: dy });
+
+        const { label, code } = getDirection(dx, -dy);
+        const newData = {
+          dx: parseFloat(dx.toFixed(1)),
+          dy: -parseFloat(dy.toFixed(1)),
+          directionLabel: label,
+          directionCode: code,
+        };
+        console.log(`dx: ${newData.dx}, dy: ${newData.dy}, direction: ${label}`);
+        setJoystickData(newData);
+        sendJoystickData(newData.dx, newData.dy, newData.directionCode);
+      },
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+        Animated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+        }).start();
+        setJoystickData({ dx: 0, dy: 0, directionLabel: 'center', directionCode: 0 });
+        console.log('dx: 0, dy: 0, direction: center');
+        sendJoystickData(0, 0, 0);
+      },
+    })
+  ).current;
+
+  const playSpeedSound = async (index: number) => {
+    const soundFiles = [
+      require('../assets/sound/gtr.start.mp3'),
+      require('../assets/sound/gtr.1.mp3'),
+      require('../assets/sound/gtr.2.mp3'),
+      require('../assets/sound/gtr.3.mp3'),
+      require('../assets/sound/turbo.mp3'),
+    ];
+    const { sound } = await Audio.Sound.createAsync(soundFiles[index]);
+    await sound.playAsync();
+  };
+
+  const handleSpeedSelect = async (index: number) => {
+    setSelectedSpeed(index);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    playSpeedSound(index);
+    const speedLabels = ['SLOWEST', 'SLOW', 'MEDIUM', 'FAST', 'FASTEST'];
+    console.log(`Speed selected: ${speedLabels[index]} (${index})`);
+  };
+
+  return (
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: screenAnim,
+          transform: [
+            {
+              translateY: screenAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [30, 0],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Image source={require('../assets/icons/back.png')} style={styles.backIcon} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Remote Control</Text>
+      </View>
+
+      <View style={styles.dpadContainer}>
+        <View style={styles.dpadBase}>
+          <Image source={require('../assets/icons/up.png')} style={[styles.directionIcon, { top: 5, left: 95 }]} />
+          <Image source={require('../assets/icons/down.png')} style={[styles.directionIcon, { bottom: 5, left: 95 }]} />
+          <Image source={require('../assets/icons/left.png')} style={[styles.directionIcon, { left: 5, top: 95 }]} />
+          <Image source={require('../assets/icons/right.png')} style={[styles.directionIcon, { right: 5, top: 95 }]} />
+          <Animated.View
+            style={[styles.joystick, { transform: [{ translateX: pan.x }, { translateY: pan.y }] }]}
+            {...panResponder.panHandlers}
+          />
+        </View>
+
+        <View style={{ alignItems: 'center', marginTop: 20 }}>
+          <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Joystick Data</Text>
+          <Text style={{ fontSize: 16 }}>dx: {joystickData.dx}</Text>
+          <Text style={{ fontSize: 16 }}>dy: {joystickData.dy}</Text>
+          <Text style={{ fontSize: 16 }}>Direction: {joystickData.directionLabel}</Text>
+        </View>
+      </View>
+
+      <View style={styles.speedContainer}>
+        <Image source={require('../assets/icons/regulator.png')} style={styles.regulatorImage} />
+
+        {selectedSpeed !== null && (
+          <Text style={styles.speedDisplay}>{selectedSpeed}</Text>
+        )}
+
+        <View style={styles.regulatorTouchOverlay}>
+          {Array(5).fill(0).map((_, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.regulatorZone]}
+              onPress={() => handleSpeedSelect(index)}
+            />
+          ))}
+        </View>
+        <Text style={styles.speedLabel}>Speed Regulator</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#d0e8ff',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#007BFF',
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 10,
+  },
+  backIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+  },
+  dpadContainer: {
+    marginTop: 10,
+    paddingBottom: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dpadBase: {
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  joystick: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#555',
+    borderWidth: 3,
+    borderColor: '#999',
+    zIndex: 2,
+  },
+  directionIcon: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+    zIndex: 1,
+  },
+  speedContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  regulatorImage: {
+    width: width,
+    height: height * 0.25,
+    resizeMode: 'contain',
+  },
+  regulatorTouchOverlay: {
+    position: 'absolute',
+    top: 0,
+    flexDirection: 'row',
+    width: '100%',
+    height: height * 0.25,
+  },
+  regulatorZone: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  speedLabel: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  speedDisplay: {
+    position: 'absolute',
+    top: height * 0.097,
+    left: width / 2 - 20,
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#000',
+    zIndex: 5,
+  },
+});

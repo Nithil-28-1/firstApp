@@ -1,0 +1,61 @@
+{
+  "expo": {
+    "name": "SafeM8",
+    "slug": "SafeM8t",
+    "scheme": "safem8",
+    "entryPoint": "./app/(tabs)/index.tsx",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "plugins": [
+      "expo-router",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": [
+            "peripheral",
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "Allow SafeM8 to use Bluetooth",
+          "bluetoothPeripheralPermission": "Allow SafeM8 to act as a Bluetooth peripheral"
+        }
+      ],
+      "expo-font"
+    ],
+    "android": {
+      "package": "com.yourcompany.SafeM8",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT"
+      ],
+      "config": {
+        "cleartextTraffic": true
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.SafeM8",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "SafeM8 needs Bluetooth access to connect with nearby devices.",
+        "NSBluetoothPeripheralUsageDescription": "SafeM8 needs to use Bluetooth to communicate with peripherals."
+      }
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "93d5457c-81db-43a7-abb9-dfbbb0120392"
+      }
+    },
+    "owner": "nithil28"
+  }
+}

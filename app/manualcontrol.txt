@@ -1,0 +1,211 @@
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, BackHandler} from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useRouter } from 'expo-router';
+
+export default function ManualControl() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const backAction = () => {
+      router.replace('/home'); // Use router.replace or router.push to go to home.tsx
+      return true; // Prevent default behavior (going back in stack)
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove(); // Clean up on unmount
+  }, []);
+
+  useEffect(() => {
+    // Lock to portrait on mount
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+  },[]);
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Manual Patrol Mode</Text>
+      </View>
+
+      {/* Robot and Speech Bubble */}
+      <View style={styles.robotSection}>
+        <Image
+          source={require('../assets/images/robot_icon3.png')}
+          style={styles.robotIcon}
+        />
+        <View style={styles.speechBubble}>
+          <Text style={styles.speechText}>
+            Please tap on{'\n'}the phone icon{'\n'}to control the device
+          </Text>
+          <View style={styles.speechBubbleArrowBorder} />
+          <View style={styles.speechBubbleArrow} />
+        </View>
+
+        {/* Rotation Prompt */}
+        <TouchableOpacity
+          style={styles.rotationIconSection}
+          onPress={() => router.push('/controller')}
+        >
+          <Image
+            source={require('../assets/images/rotate1.png')}
+            style={styles.rotationIcon}
+          />
+          <Text style={styles.tapInstruction}>
+            Tap here!
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Instruction Guide with D-Pad */}
+      <View style={styles.instructionSection}>
+        <Image
+          source={require('../assets/images/D-Pad.png')}
+          style={styles.instructionDPad}
+        />
+        <Text style={styles.instructionText}>
+          How to Use:{'\n'}{'\n'}
+          The left D-pad is used{'\n'}to control the camera{'\n'}
+          angle while the right{'\n'}D-pad is used for the{'\n'}
+          device direction of{'\n'}movement.
+        </Text>
+      </View>
+
+      {/* Back Button */}
+      <TouchableOpacity onPress={() => router.push('/home')} style={styles.backButton}>
+        <Image
+          source={require('../assets/images/button2.png')}
+          style={styles.backIcon}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// (styles remain unchanged)
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#46cbe2',
+    alignItems: 'center',
+  },
+  header: {
+    width: '100%',
+    backgroundColor: '#004aad',
+    paddingTop: 55,
+    paddingBottom: 30,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontFamily: 'BrickSans',
+    fontSize: 20,
+    color: '#fff',
+  },
+  robotSection: {
+    marginTop: 30,
+    marginLeft: 250,
+    position: 'relative',
+  },
+  robotIcon: {
+    width: 250,
+    height: 250,
+    resizeMode: 'contain',
+  },
+  speechBubble: {
+    position: 'absolute',
+    top: -20,
+    left: 40,
+    backgroundColor: 'white',
+    borderColor: 'black',
+    borderWidth: 2,
+    borderRadius: 10,
+    padding: 10,
+    maxWidth: 160,
+    alignItems: 'center',
+  },
+  speechText: {
+    fontFamily: 'BrickSans',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  speechBubbleArrow: {
+    position: 'absolute',
+    bottom: -12,
+    left: '50%',
+    marginLeft: -8,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 12,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'white',
+    borderStyle: 'solid',
+    zIndex: 2,
+  },
+  speechBubbleArrowBorder: {
+    position: 'absolute',
+    bottom: -14,
+    left: '50%',
+    marginLeft: -9,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderTopWidth: 14,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'black',
+    borderStyle: 'solid',
+    zIndex: 3,
+  },
+  tapInstruction: { 
+    fontFamily: 'BrickSans', 
+    fontSize: 16, color: '#000', 
+    textAlign: 'center', marginTop: 5,     
+    lineHeight: 20,
+  },
+  rotationIconSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: -70,
+    alignItems: 'center',
+  },
+  rotationIcon: {
+    width: 125,
+    height: 125,
+    resizeMode: 'contain',
+  },
+  instructionSection: {
+    marginTop: 50,
+    marginLeft: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  instructionDPad: {
+    width: 150,
+    height: 150,
+    resizeMode: 'contain',
+    marginRight: 15,
+  },
+  instructionText: {
+    fontFamily: 'BrickSans',
+    fontSize: 16,
+    color: '#000',
+  },
+  backButton: {
+    marginTop: 110,
+  },
+  backIcon: {
+    width: 60,
+    height: 60,
+    transform: [{ scaleX: -1 }],
+    resizeMode: 'contain',
+  },
+});

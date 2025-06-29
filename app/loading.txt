@@ -1,0 +1,96 @@
+// app/loading.tsx
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, StyleSheet, ActivityIndicator, Dimensions } from 'react-native';
+import { useRouter } from 'expo-router';
+import { getAuth } from 'firebase/auth';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { firebaseApp } from '../firebase';
+import * as Font from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useUser } from '../context/usercontext';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function LoadingScreen() {
+  const router = useRouter();
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const { setUser } = useUser();
+  const { width, height } = Dimensions.get('window');
+  const screenSize = { width, height };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Load font
+        await Font.loadAsync({
+          BrickSans: require('../assets/fonts/NTBrickSans.ttf'),
+        });
+        setFontsLoaded(true);
+        await SplashScreen.hideAsync();
+  
+        // Fetch username from Firebase
+        const auth = getAuth(firebaseApp);
+        const user = auth.currentUser;
+        if (user) {
+          const db = getFirestore(firebaseApp);
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const name = userDoc.data().name;
+            setUser({ email: user.email!, username: name }); // 👈 Save to context
+            router.replace('/home');
+
+          } else {
+            console.warn('User document does not exist.');
+            router.replace('/home');
+          }
+        } else {
+          router.replace('/login');
+        }
+      } catch (error) {
+        console.error('Error in loading screen:', error);
+        router.replace('/login');
+      }
+    };
+  
+    fetchData();
+  }, []);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <View style={styles.container}>
+      <Image
+        source={require('../assets/images/robot_icon1.png')}
+        style={styles.robotImage}
+        resizeMode="contain"
+      />
+      <ActivityIndicator size="large" color="#004aad" style={styles.spinner} />    
+      <Text style={styles.text}>Just a Moment</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#46cbe2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  robotImage: {
+    width: 600,
+    height: 600,
+    marginBottom: 0,
+  },
+  spinner: {
+    marginTop: 10,
+    marginVertical: 20,
+  },
+  text: {
+    fontFamily: 'BrickSans',
+    fontSize: 20,
+    color: 'black',
+  },
+});
